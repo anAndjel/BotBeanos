@@ -55,7 +55,6 @@ export class CountingGame {
         name: "counting",
         type: 0, // GUILD_TEXT
       });
-      // Initialize state for this guild
       this.state[guild.id] = {
         channelId: channel.id,
         currentNumber: 0,
@@ -69,26 +68,17 @@ export class CountingGame {
   }
 
   public async handleMessage(message: Message) {
-
-    console.log("🔹 Guild ID:", message.guild.id);
-    console.log("🔹 Channel ID:", message.channel.id);
-    console.log("🔹 Stored counting channel ID:", this.state[message.guild.id]?.channelId);
-
     if (!message.guild || message.author.bot) return;
 
-    // Ensure guild state exists
-    let guildState = this.state[message.guild.id];
+    const guildState = this.state[message.guild.id];
     if (!guildState) {
-      // If counting game hasn't been initialized yet, ignore
       console.log("⚠️ Counting game not started in this guild");
       return;
     }
 
-    // Ignore messages outside the counting channel
     if (message.channel.id !== guildState.channelId) return;
 
     const number = parseInt(message.content);
-
     const isInvalid =
       isNaN(number) ||
       number !== guildState.currentNumber + 1 ||
@@ -103,7 +93,6 @@ export class CountingGame {
       return;
     }
 
-    // ✅ Valid number → update state & save
     guildState.currentNumber = number;
     guildState.lastUserId = message.author.id;
     this.saveState();
@@ -116,3 +105,6 @@ export class CountingGame {
     this.saveState();
   }
 }
+
+// ✅ Export a single shared instance
+export const countingGame = new CountingGame();

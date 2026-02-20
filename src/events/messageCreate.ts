@@ -1,14 +1,8 @@
 import { Message } from "discord.js";
 import type { Command } from "../types/command.ts";
-import { CountingGame } from "../handlers/CountingGame.ts";
+import { countingGame } from "../handlers/CountingGame.ts"; // import the singleton
 
-const countingGame = new CountingGame();
-
-export default (
-  message: Message,
-  commands: Map<string, Command>
-) => {
-
+export default (message: Message, commands: Map<string, Command>) => {
   countingGame.handleMessage(message);
 
   if (!message.content.startsWith("!")) return;
@@ -19,4 +13,3 @@ export default (
   const command = commands.get(cmdName!);
   if (command) command.execute(message, args);
 };
-
