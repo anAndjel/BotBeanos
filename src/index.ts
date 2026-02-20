@@ -16,7 +16,7 @@ const client = new Client({
     console.log(`Logged in as ${client.user?.tag}`);
   });
 
-  client.on("messageCreate", (msg: Message) => {
+  client.on("messageCreate", async (msg: Message) => {
     //console.log("msg received:", msg.content);
     await countingGame.handleMessage(msg);
 
