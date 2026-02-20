@@ -4,7 +4,7 @@ import { CountingGame } from "../handlers/CountingGame.ts";
 
 const countingGame = new CountingGame();
 
-export default (
+export default async (
   message: Message,
   commands: Map<string, Command>
 ) => {
