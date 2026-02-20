@@ -18,22 +18,17 @@ export class CountingGame {
 
   constructor() {
     this.filePath = path.join(process.cwd(), "countingState.json");
-    console.log("📂 CountingGame initialized with file:", this.filePath);
     this.state = this.loadState();
-    console.log("📝 Loaded state on init:", this.state);
+    console.log("📂 CountingGame initialized, loaded state:", this.state);
   }
 
   private loadState(): CountingState {
-    if (!fs.existsSync(this.filePath)) {
-      console.log("⚠️ JSON file not found, starting with empty state");
-      return {};
-    }
+    if (!fs.existsSync(this.filePath)) return {};
     try {
       const data = fs.readFileSync(this.filePath, "utf8");
-      console.log("📖 JSON loaded:", data);
       return JSON.parse(data);
     } catch (err) {
-      console.error("❌ Failed to load counting state:", err);
+      console.error("Failed to load counting state:", err);
       return {};
     }
   }
@@ -43,7 +38,7 @@ export class CountingGame {
       fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2));
       console.log("✅ Counting state saved:", this.state);
     } catch (err) {
-      console.error("❌ Failed to save counting state:", err);
+      console.error("Failed to save counting state:", err);
     }
   }
 
@@ -53,83 +48,66 @@ export class CountingGame {
 
     if (guildState) {
       channel = guild.channels.cache.get(guildState.channelId) as TextChannel;
-      console.log("🔍 Found existing channel in cache:", channel?.id);
     }
 
     if (!channel) {
-      console.log("➕ Creating new counting channel for guild:", guild.id);
       channel = await guild.channels.create({
         name: "counting",
-        type: 0,
+        type: 0, // GUILD_TEXT
       });
+      // Initialize state for this guild
       this.state[guild.id] = {
         channelId: channel.id,
         currentNumber: 0,
         lastUserId: "",
       };
       this.saveState();
-      console.log("✅ New guild state initialized:", this.state[guild.id]);
+      console.log("✅ Created new counting channel for guild:", guild.id);
     }
 
     return channel;
   }
 
   public async handleMessage(message: Message) {
-    if (!message.guild || message.author.bot) {
-      console.log("⛔ Ignored message from bot or missing guild");
+    if (!message.guild || message.author.bot) return;
+
+    // Ensure guild state exists
+    let guildState = this.state[message.guild.id];
+    if (!guildState) {
+      // If counting game hasn't been initialized yet, ignore
+      console.log("⚠️ Counting game not started in this guild");
       return;
     }
 
-    if (!this.state[message.guild.id]) {
-      console.log("⚠️ No state for guild, initializing with channel:", message.channel.id);
-      this.state[message.guild.id] = {
-        channelId: message.channel.id,
-        currentNumber: 0,
-        lastUserId: "",
-      };
-      this.saveState();
-    }
-
-    const guildState = this.state[message.guild.id];
-    console.log("💬 Message received:", message.content, "Guild state before:", guildState);
-
-    if (message.channel.id !== guildState.channelId) {
-      console.log("⏭ Message ignored, not in counting channel:", message.channel.id);
-      return;
-    }
+    // Ignore messages outside the counting channel
+    if (message.channel.id !== guildState.channelId) return;
 
     const number = parseInt(message.content);
+
     const isInvalid =
       isNaN(number) ||
       number !== guildState.currentNumber + 1 ||
       message.author.id === guildState.lastUserId;
 
     if (isInvalid) {
-      console.log("❌ Invalid message:", message.content);
       await message.delete().catch(() => {});
       const member = message.member as GuildMember;
       if (member) {
         member.timeout(30_000, "Broke counting rules").catch(() => {});
-        console.log("⏱ Timed out user:", member.id);
       }
       return;
     }
 
-    // Valid message → update state
+    // ✅ Valid number → update state & save
     guildState.currentNumber = number;
     guildState.lastUserId = message.author.id;
-    console.log("✅ Valid number, updating state:", guildState);
     this.saveState();
   }
 
   public reset(guildId: string) {
-    if (!this.state[guildId]) {
-      console.log("⚠️ Cannot reset, guild state not found:", guildId);
-      return;
-    }
+    if (!this.state[guildId]) return;
     this.state[guildId].currentNumber = 0;
     this.state[guildId].lastUserId = "";
-    console.log("🔄 Guild state reset:", this.state[guildId]);
     this.saveState();
   }
 }
