@@ -1,0 +1,15 @@
+import type { Command } from "../types/command";
+import { Message } from "discord.js";
+import { CountingGame } from "../CountingGame";
+
+const countingGame = new CountingGame();
+
+const command: Command = {
+  name: "counting",
+  execute: async (message: Message, args: string[]) => {
+    const channel = await countingGame.getChannel(message.guild!);
+    channel.send("Counting game started! Start with 1.");
+  }
+};
+
+export default command;
