@@ -4,6 +4,8 @@ import { loadCommands } from "./handlers/loadCommands.ts";
 import messageEvent from "./events/messageCreate.ts";
 import { CountingGame } from "./handlers/CountingGame.ts"
 
+const countingGame = new CountingGame();
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
 });
