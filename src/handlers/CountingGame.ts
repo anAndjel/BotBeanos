@@ -74,30 +74,27 @@ export class CountingGame {
 
     const number = parseInt(message.content);
 
-    // Check invalid messages
+    // Invalid message conditions
     const isInvalid =
-      isNaN(number) ||
-      number !== guildState.currentNumber + 1 ||
-      message.author.id === guildState.lastUserId;
+      isNaN(number) || // not a number
+      number !== guildState.currentNumber + 1 || // wrong sequence
+      message.author.id === guildState.lastUserId; // same user twice
 
     if (isInvalid) {
       await message.delete().catch(() => {});
       const member = message.member as GuildMember;
       if (member) {
-        // Timeout user for 30 seconds if they break rules
-        member
-          .timeout(30_000, "Broke counting rules")
-          .catch(() => {});
+        // Timeout user for 30 seconds
+        member.timeout(30_000, "Broke counting rules").catch(() => {});
       }
       return;
     }
 
-    // Valid number — update state and persist
-    this.state[message.guild.id].currentNumber = number;
-    this.state[message.guild.id].lastUserId = message.author.id;
+    // ✅ Valid message → update state and save JSON
+    guildState.currentNumber = number;
+    guildState.lastUserId = message.author.id;
     this.saveState();
-  }
-
+  }  
   // Optional: reset counting game
   public reset(guildId: string) {
     if (!this.state[guildId]) return;
