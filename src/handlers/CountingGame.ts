@@ -1,72 +1,86 @@
 import fs from "fs";
-import { Guild, TextChannel, Message } from "discord.js";
+import { Guild, TextChannel, Message, GuildMember } from "discord.js";
 
-const STATE_FILE = "./countingState.json";
-
-interface GameState {
-  channelId: string;
-  currentNumber: number;
-  lastUserId: string;
-}
+type CountingState = {
+  [guildId: string]: {
+    channelId: string;
+    currentNumber: number;
+    lastUserId: string;
+  };
+};
 
 export class CountingGame {
-  private state: Record<string, GameState>;
+  private state: CountingState;
+  private filePath = "./countingState.json";
 
   constructor() {
-    // Load JSON into memory
-    this.state = JSON.parse(fs.readFileSync(STATE_FILE, "utf8"));
+    this.state = this.loadState();
   }
 
-  // Save memory back to JSON
-  private save() {
-    fs.writeFileSync(STATE_FILE, JSON.stringify(this.state, null, 2));
+  private loadState(): CountingState {
+    if (!fs.existsSync(this.filePath)) return {};
+    try {
+      const data = fs.readFileSync(this.filePath, "utf8");
+      return JSON.parse(data);
+    } catch {
+      return {};
+    }
   }
 
-  // Get or create the counting channel
+  private saveState() {
+    fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2));
+  }
+
   public async getChannel(guild: Guild): Promise<TextChannel> {
-    let game = this.state.guilds[guild.id];
-    
-    if (game) {
-      return guild.channels.cache.get(game.channelId) as TextChannel;
-    } else {
-      // Create new channel
-      const channel = await guild.channels.create({
+    let guildState = this.state[guild.id];
+    let channel: TextChannel | undefined;
+
+    if (guildState) {
+      channel = guild.channels.cache.get(guildState.channelId) as TextChannel;
+    }
+
+    if (!channel) {
+      channel = await guild.channels.create({
         name: "counting",
-        type: 0 // GUILD_TEXT
+        type: 0, // GUILD_TEXT in discord.js v15+
       });
-      this.state.guilds[guild.id] = {
+      this.state[guild.id] = {
         channelId: channel.id,
         currentNumber: 0,
-        lastUserId: ""
+        lastUserId: "",
       };
-      this.save();
-      return channel;
+      this.saveState();
     }
+
+    return channel;
   }
 
-  // Handle incoming message in counting channel
   public async handleMessage(message: Message) {
-    if (!message.guild) return;
-    const guildId = message.guild.id;
-    const game = this.state.guilds[guildId];
-    if (!game) return;
+    if (!message.guild || message.author.bot) return;
 
-    // Ignore bot messages
-    if (message.author.bot) return;
+    const guildState = this.state[message.guild.id];
+    if (!guildState) return; // counting game not started
 
-    const expected = game.currentNumber + 1;
+    if (message.channel.id !== guildState.channelId) return;
+
     const number = parseInt(message.content);
-
-    if (number === expected && message.author.id !== game.lastUserId) {
-      game.currentNumber++;
-      game.lastUserId = message.author.id;
-      this.save();
-      // optionally react or confirm
-    } else {
-      game.currentNumber = 0;
-      game.lastUserId = "";
-      this.save();
-      message.channel.send("Wrong number! Counting reset to 0.");
+    if (
+      isNaN(number) ||
+      number !== guildState.currentNumber + 1 ||
+      message.author.id === guildState.lastUserId
+    ) {
+      await message.delete().catch(() => {});
+      const member = message.member as GuildMember;
+      if (member) {
+        // 30-second timeout for breaking counting rules
+        member.timeout(30_000, "Broke the counting rules").catch(() => {});
+      }
+      return;
     }
+
+    // Valid number
+    guildState.currentNumber = number;
+    guildState.lastUserId = message.author.id;
+    this.saveState();
   }
 }
