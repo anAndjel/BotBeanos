@@ -18,6 +18,7 @@ const client = new Client({
 
   client.on("messageCreate", (msg: Message) => {
     //console.log("msg received:", msg.content);
+    await countingGame.handleMessage(msg);
 
     if (!msg.content.startsWith("!")) return;
 
