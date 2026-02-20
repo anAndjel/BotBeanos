@@ -27,3 +27,7 @@ args = "npx tsx src/index.ts"
 
 [workflows.workflow.metadata]
 outputType = "console"
+
+[deployment]
+deploymentTarget = "vm"
+run = ["npx tsx src/index.ts"]
