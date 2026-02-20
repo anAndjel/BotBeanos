@@ -69,6 +69,11 @@ export class CountingGame {
   }
 
   public async handleMessage(message: Message) {
+
+    console.log("🔹 Guild ID:", message.guild.id);
+    console.log("🔹 Channel ID:", message.channel.id);
+    console.log("🔹 Stored counting channel ID:", this.state[message.guild.id]?.channelId);
+
     if (!message.guild || message.author.bot) return;
 
     // Ensure guild state exists
