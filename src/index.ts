@@ -1,5 +1,5 @@
 import "dotenv/config";
-import { Client, GatewayIntentBits } from "discord.js";
+import { Client, GatewayIntentBits, Message } from "discord.js";
 import { loadCommands } from "./handlers/loadCommands.ts";
 import messageEvent from "./events/messageCreate.ts";
 
