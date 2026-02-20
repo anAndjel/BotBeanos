@@ -1,5 +1,6 @@
 import { Message } from "discord.js";
 import type { Command } from "../types/command.ts";
+import type { CountingGame } from "../handlers/CountingGame.ts";
 
 export default (
   message: Message,
