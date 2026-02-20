@@ -1,23 +1,27 @@
 import fs from "fs";
+import path from "path";
 import { Guild, TextChannel, Message, GuildMember } from "discord.js";
 
+type GuildState = {
+  channelId: string;
+  currentNumber: number;
+  lastUserId: string;
+};
+
 type CountingState = {
-  [guildId: string]: {
-    channelId: string;
-    currentNumber: number;
-    lastUserId: string;
-  };
+  [guildId: string]: GuildState;
 };
 
 export class CountingGame {
   private state: CountingState;
-  private filePath = "./countingState.json";
+  private filePath: string;
 
   constructor() {
+    // Absolute path ensures JSON always writes to workspace root
+    this.filePath = path.join(process.cwd(), "countingState.json");
     this.state = this.loadState();
   }
 
-  
   private loadState(): CountingState {
     if (!fs.existsSync(this.filePath)) return {};
     try {
@@ -32,7 +36,7 @@ export class CountingGame {
   private saveState() {
     try {
       fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2));
-      console.log("Counting state saved:", this.state);
+      console.log("✅ Counting state saved:", this.state);
     } catch (err) {
       console.error("Failed to save counting state:", err);
     }
@@ -50,8 +54,9 @@ export class CountingGame {
     if (!channel) {
       channel = await guild.channels.create({
         name: "counting",
-        type: 0, // GUILD_TEXT in discord.js v15+
+        type: 0, // GUILD_TEXT
       });
+      // Initialize state for new guild
       this.state[guild.id] = {
         channelId: channel.id,
         currentNumber: 0,
@@ -67,8 +72,17 @@ export class CountingGame {
   public async handleMessage(message: Message) {
     if (!message.guild || message.author.bot) return;
 
+    // Ensure guild state exists
+    if (!this.state[message.guild.id]) {
+      this.state[message.guild.id] = {
+        channelId: message.channel.id, // fallback to current channel
+        currentNumber: 0,
+        lastUserId: "",
+      };
+      this.saveState();
+    }
+
     const guildState = this.state[message.guild.id];
-    if (!guildState) return; // counting game not started
 
     if (message.channel.id !== guildState.channelId) return;
 
@@ -84,7 +98,6 @@ export class CountingGame {
       await message.delete().catch(() => {});
       const member = message.member as GuildMember;
       if (member) {
-        // Timeout user for 30 seconds
         member.timeout(30_000, "Broke counting rules").catch(() => {});
       }
       return;
@@ -94,8 +107,9 @@ export class CountingGame {
     guildState.currentNumber = number;
     guildState.lastUserId = message.author.id;
     this.saveState();
-  }  
-  // Optional: reset counting game
+  }
+
+  // Optional: reset counting game for a guild
   public reset(guildId: string) {
     if (!this.state[guildId]) return;
     this.state[guildId].currentNumber = 0;
