@@ -17,20 +17,28 @@ export class CountingGame {
     this.state = this.loadState();
   }
 
+  
   private loadState(): CountingState {
     if (!fs.existsSync(this.filePath)) return {};
     try {
       const data = fs.readFileSync(this.filePath, "utf8");
       return JSON.parse(data);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load counting state:", err);
       return {};
     }
   }
 
   private saveState() {
-    fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2));
+    try {
+      fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2));
+      console.log("Counting state saved:", this.state);
+    } catch (err) {
+      console.error("Failed to save counting state:", err);
+    }
   }
 
+  // Returns the counting channel, creates it if missing
   public async getChannel(guild: Guild): Promise<TextChannel> {
     let guildState = this.state[guild.id];
     let channel: TextChannel | undefined;
@@ -55,6 +63,7 @@ export class CountingGame {
     return channel;
   }
 
+  // Main handler for messages
   public async handleMessage(message: Message) {
     if (!message.guild || message.author.bot) return;
 
@@ -64,23 +73,36 @@ export class CountingGame {
     if (message.channel.id !== guildState.channelId) return;
 
     const number = parseInt(message.content);
-    if (
+
+    // Check invalid messages
+    const isInvalid =
       isNaN(number) ||
       number !== guildState.currentNumber + 1 ||
-      message.author.id === guildState.lastUserId
-    ) {
+      message.author.id === guildState.lastUserId;
+
+    if (isInvalid) {
       await message.delete().catch(() => {});
       const member = message.member as GuildMember;
       if (member) {
-        // 30-second timeout for breaking counting rules
-        member.timeout(30_000, "Broke the counting rules").catch(() => {});
+        // Timeout user for 30 seconds if they break rules
+        member
+          .timeout(30_000, "Broke counting rules")
+          .catch(() => {});
       }
       return;
     }
 
-    // Valid number
-    guildState.currentNumber = number;
-    guildState.lastUserId = message.author.id;
+    // Valid number — update state and persist
+    this.state[message.guild.id].currentNumber = number;
+    this.state[message.guild.id].lastUserId = message.author.id;
+    this.saveState();
+  }
+
+  // Optional: reset counting game
+  public reset(guildId: string) {
+    if (!this.state[guildId]) return;
+    this.state[guildId].currentNumber = 0;
+    this.state[guildId].lastUserId = "";
     this.saveState();
   }
 }
