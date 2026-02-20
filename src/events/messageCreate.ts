@@ -4,12 +4,12 @@ import { CountingGame } from "../handlers/CountingGame.ts";
 
 const countingGame = new CountingGame();
 
-export default async (
+export default (
   message: Message,
   commands: Map<string, Command>
 ) => {
 
-  await countingGame.handleMessage(message);
+  countingGame.handleMessage(message);
 
   if (!message.content.startsWith("!")) return;
 
