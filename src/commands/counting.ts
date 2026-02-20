@@ -1,6 +1,6 @@
 import type { Command } from "../types/command.ts";
 import { Message } from "discord.js";
-import { CountingGame } from "../events/CountingGame.ts";
+import { CountingGame } from "../handlers/CountingGame.ts";
 
 const countingGame = new CountingGame();
 
