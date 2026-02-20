@@ -11,7 +11,7 @@ type CountingState = {
 
 export class CountingGame {
   private state: CountingState;
-  private filePath = "../countingState.json";
+  private filePath = "./countingState.json";
 
   constructor() {
     this.state = this.loadState();
